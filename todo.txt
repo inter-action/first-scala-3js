@@ -1,0 +1,47 @@
+
+https://www.scala-js.org/doc/interoperability/types.html
+
+
+
+localhost:12345
+
+#Initial Start
+  cd /target/scala-2.11
+  python3 -m http.server
+
+  http://localhost:8000/classes/index-dev.html
+  http://localhost:8000/classes/index-opt.html
+
+cmds: 
+  ~fastOptJS # fast type js
+  fullOptJS  # full optimized js
+
+
+  du -h first-scala-3js-opt.js #view output size
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
