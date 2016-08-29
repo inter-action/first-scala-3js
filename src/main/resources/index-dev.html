@@ -7,7 +7,7 @@
 <body style="margin: 0px">
 
 <div>
-    <canvas style="display: block" id="canvas" width="500" height="255"/>
+    <canvas style="display: block" id="canvas" width="1280" height="526"/>
 </div>
 
 <script type="text/javascript" src="./three.min.js"></script>
@@ -16,7 +16,7 @@
 <script type="text/javascript" src="/workbench.js"></script>
 <script>
   //  be careful about ()
-  webapp.Entry().main(document.querySelector("#canvas"));
+  webapp.Entry().main(document.querySelector("#canvas"), 1280, 526, devicePixelRatio);
 </script>
 </body>
 </html>
