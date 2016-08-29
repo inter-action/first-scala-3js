@@ -28,7 +28,10 @@ object Pumpings{
 }
 
 object Resouces {
-  val image = "/classes/image.png"
+  val image_0 = "/classes/image_0.png"
+  val image_1 = "/classes/image_1.png"
+  val image_2 = "/classes/image_2.png"
+  val logo_image = "/classes/logo.png"
 }
 
 /*
@@ -49,7 +52,8 @@ object Entry {
     dom.window.asInstanceOf[js.Dynamic].scene = scene // export to window.scene , for three.js inspector work
     dom.window.asInstanceOf[js.Dynamic].redraw = redraw _
     camera = new PerspectiveCamera(45, width/height, 1, 200)
-    camera.position.z = 150
+    camera.position.y = 150
+    camera.lookAt(new Vector3(0, 0, 0))
     scene.add(camera)
 
 
@@ -68,8 +72,8 @@ object Entry {
     val firstCircle = Helpers.createDashedCircle(20, 100)
     scene.add(firstCircle)
 
-    scene.add(Helpers.createDashedCircle(50, 100))
-    scene.add(Helpers.createDashedCircle(80, 100))
+    scene.add(Helpers.createDashedCircle(40, 100))
+    scene.add(Helpers.createDashedCircle(70, 100))
     val lastCircle = Helpers.createDashedCircle(120, 100)
     val lastBall = createBall(20, 30)
     lastBall.name = "lastBall"
@@ -79,14 +83,13 @@ object Entry {
     render.render(scene, camera)
 
     val loader = new TextureLoader()
+    loadPanels(loader)
 
-    val onload = (texture: Texture) => {
-//      texture.magFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
-//      texture.minFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
-//      println("max is: ", render.getMaxAnisotropy())
+    // load logo
+    val onLogoload = (texture: Texture) => {
       texture.anisotropy =  16
-      val ratio = 630.0/1398
-      val width = 100
+      val ratio = 328.0/612
+      val width = 60
 
       val geometry = new PlaneGeometry(width, width*ratio)
       val material = new MeshPhongMaterial(
@@ -98,14 +101,12 @@ object Entry {
           "emissive"->0x222222
         ).asInstanceOf[MeshPhongMaterialParameters])
       val plane = new Mesh( geometry, material )
-      plane.position.y = -40
+      plane.position.y = 10
       scene.add( plane )
       render.render(scene, camera)
 
     }
-    loader.load(Resouces.image, onload)
-
-
+    loader.load(Resouces.logo_image, onLogoload)
 
 
 //    val pointLight = new PointLight(0xff0000, 1, 100)
@@ -115,11 +116,11 @@ object Entry {
 //    val pointLightHelper = new PointLightHelper(pointLight, 1)
 //    scene.add(pointLightHelper)
 
-    animate(lastCircle)
+//    animate(lastCircle)
     circleBall(lastBall, 20)
 
 
-
+    animateCamera()
   }
 
   // http://stackoverflow.com/questions/30245990/how-to-merge-two-geometries-or-meshes-using-three-js-r71
@@ -128,15 +129,16 @@ object Entry {
     val material = new MeshPhongMaterial(
       literal(
         "color"->0xffffff,
-        "emissive"->0x666666
+        "emissive"->0x666666,
+        "transparent"->true,//set to transparent, to avoid black on margins of this image
+        "opacity"->0.7
       ).asInstanceOf[MeshPhongMaterialParameters])
 
     val result = new Mesh(ball, material)
-//    result.position.x = js.Math.cos(radius * deg * js.Math.PI)
-
     val degnumber = deg.degMulWithPI
     result.position.x = js.Math.cos(degnumber) * radius
     result.position.y = js.Math.sin(degnumber) * radius
+    result.position.z = 0
 
     return result
   }
@@ -146,8 +148,36 @@ object Entry {
       animate(target)
     }
 
-    target.rotation.z = js.Date.now() * 0.0005
-    render.render(scene, camera)
+    target.rotation.z = js.Date.now() * 0.00005
+    redraw()
+  }
+
+  def animateCamera():Unit = {
+    var deg = 0.0
+    val toDeg = 90
+    val radius = 150
+    val speed = 0.3
+    var handler = 0
+
+    def startj():Unit = {
+      if ( Math.floor(deg) >= toDeg){
+        dom.window.cancelAnimationFrame(handler)
+        camera.position.z = 150
+        camera.position.y = 0
+        camera.lookAt(new Vector3(0, 0, 0))
+        redraw()
+      }else{
+        handler = dom.window.requestAnimationFrame{_:Double=>startj()}
+      }
+      deg += speed
+      camera.position.y = js.Math.cos(deg.degMulWithPI) * radius
+      camera.position.z = js.Math.sin(deg.degMulWithPI) * radius
+      camera.lookAt(new Vector3(0, 0, 0))
+      redraw()
+      ()
+    }
+
+    startj()
   }
 
   def redraw():Unit = {
@@ -165,6 +195,52 @@ object Entry {
     mesh.position.y = js.Math.sin(theta) * radiusToCenter
 
     render.render(scene, camera)
+  }
+
+  def loadPanel(loader: TextureLoader, src: String)( cb: (Mesh)=>Unit ): Unit ={
+    val onload = (texture: Texture) => {
+      //      texture.magFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
+      //      texture.minFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
+      //      println("max is: ", render.getMaxAnisotropy())
+      texture.anisotropy =  16
+      val ratio = 630.0/1398
+      val width = 100
+
+      val geometry = new PlaneGeometry(width, width*ratio)
+      val material = new MeshPhongMaterial(
+        literal(
+          "color"->0xffffff,
+          "map"->texture,
+          "transparent"->true,//set to transparent, to avoid black on margins of this image
+          "opacity"->1.0,
+          "emissive"->0x222222
+        ).asInstanceOf[MeshPhongMaterialParameters])
+      val plane = new Mesh( geometry, material )
+      plane.position.y = -40
+      cb(plane)
+      scene.add( plane )
+      render.render(scene, camera)
+
+    }
+    loader.load(Resouces.image_1, onload)
+  }
+
+  def loadPanels(loader: TextureLoader):Unit = {
+    loadPanel(loader, Resouces.image_1){ mesh=>
+      mesh.position.z = 3
+    }
+
+    loadPanel(loader, Resouces.image_0){ mesh: Mesh=>
+      mesh.position.x = -30
+      mesh.position.y = -55
+      mesh.position.z = 2
+    }
+
+    loadPanel(loader, Resouces.image_0){ mesh: Mesh=>
+      mesh.position.x = 30
+      mesh.position.y = -55
+      mesh.position.z = 2
+    }
   }
 }
 
@@ -262,7 +338,10 @@ object Helpers {
 
     curvePath.add(curve)
     curvePath.closePath()
-    val material = new LineDashedMaterial(literal("gapSize"->6, "dashSize"->6, "color"->0xffffff).asInstanceOf[LineDashedMaterialParameters])
+    val material = new LineDashedMaterial(
+      literal(
+        "gapSize"->6, "dashSize"->6, "color"->0x398aff, "transparent"->true, "opacity"->0.7
+      ).asInstanceOf[LineDashedMaterialParameters])
     val geometry = curvePath.createPointsGeometry(segmentCount)
     new LineSegments(geometry, material)
 
