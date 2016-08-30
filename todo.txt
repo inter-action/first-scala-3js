@@ -1,6 +1,9 @@
 
 https://www.scala-js.org/doc/interoperability/types.html
 
+https://bintray.com/
+
+
 
 
 localhost:12345
@@ -19,7 +22,30 @@ cmds:
 
   du -h first-scala-3js-opt.js #view output size
 
-  
+
+todo:
+
+  done:
+
+  pending:
+
+    ArugmentedConsole
+
+    webgl shader editor
+
+#Terms
+
+Texel:
+  A texel, texture element, or texture pixel is the fundamental unit of a texture map
+
+
+## links:
+Three.js 入门 - http://www.ituring.com.cn/article/50019
+Euler_angles - https://en.wikipedia.org/wiki/Euler_angles
+UV-mapping - http://solutiondesign.com/blog/-/blogs/webgl-and-three-js-texture-mappi-1/
+
+chrome dev pannel-https://developers.google.com/web/tools/chrome-devtools/debug/command-line/command-line-reference?hl=en
+
 
 
 

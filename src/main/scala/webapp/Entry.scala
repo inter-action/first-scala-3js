@@ -34,6 +34,7 @@ object Resouces {
   val image_1 = "/classes/image_1.png"
   val image_2 = "/classes/image_2.png"
   val logo_image = "/classes/logo.png"
+  val slogan_image = "/classes/slogan.png"
 }
 
 /*
@@ -56,6 +57,8 @@ object Entry {
   val ballRadiuses = Seq(20, 40, 70, 120)
 
   var logo: Mesh = null
+
+  var _rotateLogo:()=>Unit = null
 
   //webapp.Entry().main();
   @JSExport
@@ -99,29 +102,28 @@ object Entry {
     val loader = new TextureLoader()
     loadPanels(loader)
 
-    // load logo
-    val onLogoload = (texture: Texture) => {
-      texture.anisotropy =  16
-      val ratio = 328.0/612
-      val width = 60
-
-      val geometry = new PlaneGeometry(width, width*ratio)
-      val material = new MeshPhongMaterial(
-        literal(
-          "color"->0xffffff,
-          "map"->texture,
-          "transparent"->true,//set to transparent, to avoid black on margins of this image
-          "opacity"->1.0,
-          "emissive"->0x222222
-        ).asInstanceOf[MeshPhongMaterialParameters])
-      logo = new Mesh( geometry, material )
-      logo.position.y = 10
-      logo.position.z = 1
-      scene.add( logo )
-      render.render(scene, camera)
-
+    val params: (Texture)=>MeshPhongMaterialParameters = { texture=>
+      literal(
+        "color"->0xffffff,
+        "map"->texture,
+        "transparent"->true,//set to transparent, to avoid black on margins of this image
+        "opacity"->1.0,
+        "emissive"->0x6785D8,
+        "side"->NThree.DoubleSide
+      ).asInstanceOf[MeshPhongMaterialParameters]
     }
-    loader.load(Resouces.logo_image, onLogoload)
+
+    // load slogan
+    loadPanel(loader, Resouces.slogan_image, 130.0/612, 60, params){ mesh=>
+      mesh.position.y = 20
+      mesh.position.z = 1
+    }
+
+    loadPanel(loader, Resouces.logo_image, 118.0/102, 10, params){ mesh=>
+      mesh.position.z = 1
+      mesh.name = "logo"
+      logo = mesh
+    }
 
 
 //    val pointLight = new PointLight(0xff0000, 1, 100)
@@ -133,9 +135,12 @@ object Entry {
 
 //    animate(lastCircle)
 
-    animateCamera(animate _)
+    animateCamera(()=>{
+      _rotateLogo = rotateLogo()
+      animate()
+    })
 
-    registerMouseEvent()
+//    registerMouseEvent()
   }
 
   // http://stackoverflow.com/questions/30245990/how-to-merge-two-geometries-or-meshes-using-three-js-r71
@@ -143,10 +148,11 @@ object Entry {
     val ball = new SphereGeometry(1, 10, 10)
     val material = new MeshPhongMaterial(
       literal(
-        "color"->0xffffff,
-        "emissive"->0x666666,
+        "color"->0x09EECF,
+        "emissive"->0xCFE2D2,
         "transparent"->true,//set to transparent, to avoid black on margins of this image
-        "opacity"->0.7
+        "opacity"->0.64,
+        "specular"-> 0xF9FBFF
       ).asInstanceOf[MeshPhongMaterialParameters])
 
     val result = new Mesh(ball, material)
@@ -170,6 +176,7 @@ object Entry {
     })
 
     onMouseMoving()
+    _rotateLogo()
     redraw()
   }
 
@@ -197,7 +204,11 @@ object Entry {
         onMouseMoving()
         onFinish()
       }else{
-        handler = dom.window.requestAnimationFrame{_:Double=>startj()}
+        handler = try {
+          window.requestAnimationFrame { _:Double => startj() }
+        } catch {
+          case _: Throwable => 0
+        }
       }
       deg += speed
       camera.position.y = js.Math.cos(deg.degMulWithPI) * radius
@@ -244,32 +255,37 @@ object Entry {
   }
 
   def loadPanel(loader: TextureLoader, src: String)( cb: (Mesh)=>Unit ): Unit ={
+    val params: (Texture)=>MeshPhongMaterialParameters = { texture=>
+      literal(
+        "color"->0xffffff,
+        "map"->texture,
+        "transparent"->true,//set to transparent, to avoid black on margins of this image
+        "opacity"->1.0,
+        "emissive"->0x222222
+      ).asInstanceOf[MeshPhongMaterialParameters]
+    }
+    loadPanel(loader, src, 630.0/1398, 100, params){ mesh=>
+      mesh.position.y = -40
+      cb(mesh)
+    }
+  }
+
+  def loadPanel(loader: TextureLoader, src: String, ratio: Double, width: Double, options: (Texture)=> MeshPhongMaterialParameters)( cb: Mesh=>Unit ): Unit = {
     val onload = (texture: Texture) => {
       //      texture.magFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
       //      texture.minFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
       //      println("max is: ", render.getMaxAnisotropy())
 
 //      texture.anisotropy =  16 //increase sample accuracy, resolve to more resolution
-      val ratio = 630.0/1398
-      val width = 100
-
       val geometry = new PlaneGeometry(width, width*ratio)
-      val material = new MeshPhongMaterial(
-        literal(
-          "color"->0xffffff,
-          "map"->texture,
-          "transparent"->true,//set to transparent, to avoid black on margins of this image
-          "opacity"->1.0,
-          "emissive"->0x222222
-        ).asInstanceOf[MeshPhongMaterialParameters])
+      val material = new MeshPhongMaterial( options(texture) )
       val plane = new Mesh( geometry, material )
-      plane.position.y = -40
       cb(plane)
       scene.add( plane )
       render.render(scene, camera)
 
     }
-    loader.load(Resouces.image_1, onload)
+    loader.load(src, onload)
   }
 
   def loadPanels(loader: TextureLoader):Unit = {
@@ -283,11 +299,23 @@ object Entry {
       mesh.position.z = 2
     }
 
-    loadPanel(loader, Resouces.image_0){ mesh: Mesh=>
+    loadPanel(loader, Resouces.image_2){ mesh: Mesh=>
       mesh.position.x = 30
       mesh.position.y = -55
       mesh.position.z = 2
     }
+  }
+
+
+  def rotateLogo():()=>Unit ={
+
+    val timestamp = js.Date.now()
+
+    def start() = {
+      logo.rotation.y += (js.Date.now()-timestamp) * 0.00005
+    }
+
+    return start _
   }
 
 
@@ -328,7 +356,7 @@ object ThreeJSTypings {
   @JSName("THREE")
   object NThree extends js.Object{
     val NearestMipMapLinearFilter:NTextureFilter = js.native
-
+    val DoubleSide:Double = js.native
   }
 
   @js.native
