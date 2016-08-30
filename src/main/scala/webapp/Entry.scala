@@ -2,11 +2,13 @@ package webapp
 
 import scala.language.implicitConversions
 
-import org.scalajs.dom.raw.HTMLImageElement
+import org.scalajs.dom.raw.{MouseEvent, HTMLImageElement}
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSName, JSExport}
 import org.scalajs.dom
+import org.scalajs.dom.window.document
+import org.scalajs.dom.window
 import org.scalajs.dom.html
 import org.denigma.threejs._
 import scala.scalajs.js.Dynamic.literal
@@ -42,11 +44,26 @@ object Entry {
   var render: WebGLRenderer = null
   var scene: Scene = null
   var camera: Camera = null
+  var mouseX: Double = 0.0
+  var mouseY: Double = 0.0
+  var isMouseMoving = false
+
+  var canvasWidth: Double = 0.0
+  var canvasHeight: Double = 0.0
+  var _topOffset = 0.0
+
+  var balls: Seq[Mesh] = Seq.empty[Mesh]
+  val ballRadiuses = Seq(20, 40, 70, 120)
+
+  var logo: Mesh = null
 
   //webapp.Entry().main();
   @JSExport
-  def main(_canvas: html.Canvas, width: Double, height: Double, dpr: Double): Unit = {
-    println("this is first output line")
+  def main(_canvas: html.Canvas, width: Double, height: Double, dpr: Double, topOffset:Double = 72): Unit = {
+    canvasWidth = width
+    canvasHeight = height
+    _topOffset = topOffset
+
     render = Helpers.createRender(_canvas, width, height, dpr)
     scene = new Scene()
     dom.window.asInstanceOf[js.Dynamic].scene = scene // export to window.scene , for three.js inspector work
@@ -57,29 +74,26 @@ object Entry {
     scene.add(camera)
 
 
-    val light = new DirectionalLight(0xffffff, 0.7)
+    val light = new DirectionalLight(0xffffff, 0.73)
     light.position.set(0, 0, 10)
     scene.add(light)
 
-    /*
-
-    var ambientLight = new THREE.AmbientLight(0x555555);
-    scene.add(ambientLight);
-     */
-
 //    val cube = new Mesh(new BoxGeometry(1, 2, 3), new MeshBasicMaterial(literal("color"->0xff0000).asInstanceOf[MeshBasicMaterialParameters]))
 //    scene.add(cube)
-    val firstCircle = Helpers.createDashedCircle(20, 100)
-    scene.add(firstCircle)
 
-    scene.add(Helpers.createDashedCircle(40, 100))
-    scene.add(Helpers.createDashedCircle(70, 100))
-    val lastCircle = Helpers.createDashedCircle(120, 100)
-    val lastBall = createBall(20, 30)
-    lastBall.name = "lastBall"
-    scene.add(lastCircle)
-    scene.add(lastBall)
+    ballRadiuses.zipWithIndex.map(e=>{
+      val i = e._2
+      val circle = Helpers.createDashedCircle(ballRadiuses(i), 100)
+      scene.add(circle)
+      circle
+    })
 
+    balls = ballRadiuses.zipWithIndex.map(x=>{
+      val i = x._2
+      val ball = createBall(ballRadiuses(i), 30*i, "ball"+i)
+      scene.add(ball)
+      ball
+    })
     render.render(scene, camera)
 
     val loader = new TextureLoader()
@@ -100,9 +114,10 @@ object Entry {
           "opacity"->1.0,
           "emissive"->0x222222
         ).asInstanceOf[MeshPhongMaterialParameters])
-      val plane = new Mesh( geometry, material )
-      plane.position.y = 10
-      scene.add( plane )
+      logo = new Mesh( geometry, material )
+      logo.position.y = 10
+      logo.position.z = 1
+      scene.add( logo )
       render.render(scene, camera)
 
     }
@@ -117,14 +132,14 @@ object Entry {
 //    scene.add(pointLightHelper)
 
 //    animate(lastCircle)
-    circleBall(lastBall, 20)
 
+    animateCamera(animate _)
 
-    animateCamera()
+    registerMouseEvent()
   }
 
   // http://stackoverflow.com/questions/30245990/how-to-merge-two-geometries-or-meshes-using-three-js-r71
-  def createBall(radius: Double, deg: Double):Mesh = {
+  def createBall(radius: Double, deg: Double, name: String = ""):Mesh = {
     val ball = new SphereGeometry(1, 10, 10)
     val material = new MeshPhongMaterial(
       literal(
@@ -139,33 +154,48 @@ object Entry {
     result.position.x = js.Math.cos(degnumber) * radius
     result.position.y = js.Math.sin(degnumber) * radius
     result.position.z = 0
+    result.name = name
 
     return result
   }
 
-  def animate(target: Object3D): Unit ={
+  def animate(): Unit ={
     dom.window.requestAnimationFrame{_:Double=>
-      animate(target)
+      animate
     }
 
-    target.rotation.z = js.Date.now() * 0.00005
+    ballRadiuses.zipWithIndex.map( x =>{
+      val (r, i) = x
+      circleBall(balls(i), r, (i+1) % 2 == 1)
+    })
+
+    onMouseMoving()
     redraw()
   }
 
-  def animateCamera():Unit = {
-    var deg = 0.0
+  def animateCamera(onFinish: ()=>Unit):Unit = {
+    var deg = 45.0
     val toDeg = 90
     val radius = 150
     val speed = 0.3
     var handler = 0
 
     def startj():Unit = {
+
+      ballRadiuses.zipWithIndex.map( x =>{
+        val (r, i) = x
+        circleBall(balls(i), r, (i+1) % 2 == 1)
+      })
+
       if ( Math.floor(deg) >= toDeg){
         dom.window.cancelAnimationFrame(handler)
         camera.position.z = 150
         camera.position.y = 0
         camera.lookAt(new Vector3(0, 0, 0))
         redraw()
+
+        onMouseMoving()
+        onFinish()
       }else{
         handler = dom.window.requestAnimationFrame{_:Double=>startj()}
       }
@@ -180,21 +210,37 @@ object Entry {
     startj()
   }
 
+  //效果不理想
+  def onMouseMoving():Unit = {
+
+    if (isMouseMoving){
+      logo.rotation.y =  ( mouseX * 0.0005 ) % 3 // 3 ~= Math.PI
+//      camera.position.x +=  ( mouseX - camera.position.x ) % 100 * 0.005
+      //        camera.position.y += ( - mouseY - camera.position.y ) * .05;
+//      camera.lookAt(new Vector3(0, 0, 0))
+//      println(s"cameras, ${camera.position.x}, ${camera.position.y}")
+    }else{
+      logo.rotation.y = 0
+//      camera.position.x = 0
+//      camera.position.y = 0
+//      camera.lookAt(new Vector3(0, 0, 0))
+    }
+  }
+
   def redraw():Unit = {
     render.render(scene, camera)
   }
 
-  def circleBall(mesh: Mesh, radiusToCenter: Double): Unit ={
-    dom.window.requestAnimationFrame {_:Double =>
-      circleBall(mesh, radiusToCenter)
-    }
+  def circleBall(mesh: Mesh, radiusToCenter: Double, clockWise: Boolean = true): Unit ={
     var deg = js.Math.atan2(mesh.position.y, mesh.position.x).radianToDeg
-    deg = (deg-0.1 + 360)%360
+    if (clockWise){
+      deg = (deg-0.1 + 360)%360
+    }else{
+      deg = (deg+0.1)%360
+    }
     val theta = deg.degMulWithPI
     mesh.position.x = js.Math.cos(theta) * radiusToCenter
     mesh.position.y = js.Math.sin(theta) * radiusToCenter
-
-    render.render(scene, camera)
   }
 
   def loadPanel(loader: TextureLoader, src: String)( cb: (Mesh)=>Unit ): Unit ={
@@ -202,7 +248,8 @@ object Entry {
       //      texture.magFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
       //      texture.minFilter = NThree.NearestMipMapLinearFilter.asInstanceOf[TextureFilter]
       //      println("max is: ", render.getMaxAnisotropy())
-      texture.anisotropy =  16
+
+//      texture.anisotropy =  16 //increase sample accuracy, resolve to more resolution
       val ratio = 630.0/1398
       val width = 100
 
@@ -241,6 +288,23 @@ object Entry {
       mesh.position.y = -55
       mesh.position.z = 2
     }
+  }
+
+
+  def registerMouseEvent(): Unit ={
+    var handler = 0
+    document.addEventListener("mousemove", { evt: MouseEvent =>
+      val isInRange = (evt.clientX > 0 && evt.clientX < window.innerWidth) && ( evt.clientY > _topOffset && evt.clientY < (canvasHeight + _topOffset))
+
+      if (isInRange){
+        mouseX = evt.clientX - window.innerWidth / 2
+        mouseY = evt.clientY - canvasHeight/2
+        isMouseMoving = true
+      }
+
+      window.clearTimeout(handler)
+      handler = window.setTimeout(() => isMouseMoving = false , 300)
+    })
   }
 }
 
