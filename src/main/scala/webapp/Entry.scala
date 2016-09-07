@@ -29,6 +29,15 @@ object Pumpings{
   }
 }
 
+// object Resouces {
+//   val image_0 = "/images/index/image_0.png"
+//   val image_1 = "/images/index/image_1.png"
+//   val image_2 = "/images/index/image_2.png"
+//   val logo_image = "/images/index/logo.png"
+//   val slogan_image = "/images/index/slogan.png"
+// }
+
+
 object Resouces {
   val image_0 = "/classes/image_0.png"
   val image_1 = "/classes/image_1.png"
@@ -58,7 +67,6 @@ object Entry {
 
   var logo: Mesh = null
 
-  var _rotateLogo:()=>Unit = null
 
   //webapp.Entry().main();
   @JSExport
@@ -136,7 +144,6 @@ object Entry {
 //    animate(lastCircle)
 
     animateCamera(()=>{
-      _rotateLogo = rotateLogo()
       animate()
     })
 
@@ -175,8 +182,8 @@ object Entry {
       circleBall(balls(i), r, (i+1) % 2 == 1)
     })
 
-    onMouseMoving()
-    _rotateLogo()
+    // onMouseMoving()
+    rotateLogo()
     redraw()
   }
 
@@ -201,7 +208,7 @@ object Entry {
         camera.lookAt(new Vector3(0, 0, 0))
         redraw()
 
-        onMouseMoving()
+        // onMouseMoving()
         onFinish()
       }else{
         handler = try {
@@ -307,15 +314,8 @@ object Entry {
   }
 
 
-  def rotateLogo():()=>Unit ={
-
-    val timestamp = js.Date.now()
-
-    def start() = {
-      logo.rotation.y += (js.Date.now()-timestamp) * 0.00005
-    }
-
-    return start _
+  def rotateLogo() ={
+    logo.rotation.y += 0.002
   }
 
 
@@ -379,6 +379,7 @@ object ThreeJSTypings {
 
     implicit def morphBack(target: NTexture): Texture = target.asInstanceOf[Texture]
   }
+
 }
 
 object Helpers {

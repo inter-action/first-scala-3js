@@ -33,6 +33,9 @@ todo:
 
     webgl shader editor
 
+    organize code in a more clean way.
+      
+
 #Terms
 
 Texel:
@@ -46,6 +49,7 @@ UV-mapping - http://solutiondesign.com/blog/-/blogs/webgl-and-three-js-texture-m
 
 chrome dev pannel-https://developers.google.com/web/tools/chrome-devtools/debug/command-line/command-line-reference?hl=en
 
+Game Graphics 101: Rendering 2D on GPU. Shaders - http://ithare.com/game-graphics-101-rendering-2d-on-gpu-shaders/
 
 
 
